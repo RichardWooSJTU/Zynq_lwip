@@ -46,6 +46,7 @@
  */
 
 #include <stdio.h>
+#include "sleep.h"
 #include "xparameters.h"
 #include "xil_printf.h"
 #include "netif/xadapter.h"
@@ -59,6 +60,7 @@
 void lwip_init();
 int start_udp8080();
 void lwip_loop();
+void udp_senddata();
 
 XScuGic XScuGicInstance;
 int data[20000];
@@ -151,11 +153,17 @@ void udp_recive(void *arg,
 		u16_t i = 0;
 		for (; i < p_rx->len; ++i)
 		{
-			xil_printf("\n %x",pData[i]);
+			xil_printf("%c",pData[i]);
 		}
 		pbuf_free(p_rx);
 	}
-	udp_senddata();
+	while(data_cnt < 20000)
+	{
+		xemacif_input(echo_netif);
+		usleep(25000);
+		udp_senddata();
+	}
+	data_cnt = 0;
 }
 
 /*
@@ -169,11 +177,11 @@ void udp_senddata()
 	//初始化pbuf
 	p_tx = pbuf_alloc(PBUF_TRANSPORT, UDP_SEND_SIZE, PBUF_POOL);
 	memcpy(p_tx->payload, data+data_cnt, UDP_SEND_SIZE);
-	data_cnt += 4000;
+	data_cnt += UDP_SEND_SIZE /4;
 	//向ip层发送
 	struct ip4_addr dst_addr;
 	IP4_ADDR(&dst_addr,  192, 168,   0, 100);
-	udp_sendto(udp8080_pcb, p_tx, &dst_addr, 8080);
+	udp_sendto(udp8080_pcb, p_tx, &dst_addr, 8081);
 	pbuf_free(p_tx);
 }
 
